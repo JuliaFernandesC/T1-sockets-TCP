@@ -2,7 +2,7 @@ import socket
 import sys
 import os
 
-TAM_BUFFER = 4096 # tamanho maximo de cada chunk (bytes)
+TAM_CHUNK = 4096 # tamanho maximo de cada chunk (bytes)
 ARQUIVOS = "arquivos"
 
 # Envia todos os bytes do buffer
@@ -13,7 +13,7 @@ def enviar_tudo(conexao, dados):
 def enviar_em_chunks(conexao, caminho_arq): 
     with open(caminho_arq, "rb") as arquivo:
         while True:
-            chunk = arquivo.read(TAM_BUFFER)
+            chunk = arquivo.read(TAM_CHUNK)
             if not chunk:
                 break
             enviar_tudo(conexao, chunk)

@@ -2,7 +2,7 @@ import socket
 import sys
 import os
 
-TAM_BUFFER = 4096  # tamanho maximo de cada chunk (bytes)
+TAM_CHUNK = 4096  # tamanho maximo de cada chunk (bytes)
 DOWNLOADS = "downloads"
 
 # Le byte a byte ate encontrar '\n', formando a linha de cabecalho
@@ -25,7 +25,7 @@ def receber_tudo(conexao, tam):
     total_recvs = 0
     while len(dados_recebidos) < tam:
         restante = tam - len(dados_recebidos)
-        chunk = conexao.recv(min(TAM_BUFFER, restante))
+        chunk = conexao.recv(min(TAM_CHUNK, restante))
         total_recvs += 1
         if not chunk:
             raise ConnectionError("Conexao encerrada antes de completar o recebimento")
@@ -39,7 +39,7 @@ def receber_em_chunks(conexao, tam, destino):
 
     with open(destino, "wb") as arquivo:
         while bytes_restantes > 0:
-            chunk = conexao.recv(min(TAM_BUFFER, bytes_restantes))
+            chunk = conexao.recv(min(TAM_CHUNK, bytes_restantes))
             if not chunk:
                 raise ConnectionError("Conexao encerrada antes de completar o recebimento")
             arquivo.write(chunk)
