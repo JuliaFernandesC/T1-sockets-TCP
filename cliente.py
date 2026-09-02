@@ -2,9 +2,10 @@ import socket
 import sys
 import os
 
-TAM_BUFFER = 4096
+TAM_BUFFER = 4096  # tamanho maximo de cada chunk (bytes)
 DOWNLOADS = "downloads"
 
+# Le byte a byte ate encontrar '\n', formando a linha de cabecalho
 def receber_linha(conexao):
     linha = b""
     total_recvs = 0
@@ -18,35 +19,36 @@ def receber_linha(conexao):
         linha += byte
     return linha.decode("utf-8"), total_recvs
 
+# Recebe em loop ate completar o tamanho de bytes. Usada so para as mensagens de erro (pequenas)
 def receber_tudo(conexao, tam):
-    """recv em loop ate chegar no tamanho de bytes. Usada so para as mensagens de erro (pequenas)"""
     dados_recebidos = b""
     total_recvs = 0
     while len(dados_recebidos) < tam:
         restante = tam - len(dados_recebidos)
-        pedaco = conexao.recv(min(TAM_BUFFER, restante))
+        chunk = conexao.recv(min(TAM_BUFFER, restante))
         total_recvs += 1
-        if not pedaco:
+        if not chunk:
             raise ConnectionError("Conexao encerrada antes de completar o recebimento")
-        dados_recebidos += pedaco
+        dados_recebidos += chunk
     return dados_recebidos, total_recvs
 
-def receber_em_pedacos(conexao, tam, destino):
-    """recebe o arquivo em pedasos e escrewve direto no disco"""
+# Recebe o arquivo em chunks e escreve direto no disco
+def receber_em_chunks(conexao, tam, destino):
     bytes_restantes = tam
     total_recvs = 0
 
     with open(destino, "wb") as arquivo:
         while bytes_restantes > 0:
-            pedaco = conexao.recv(min(TAM_BUFFER, bytes_restantes))
-            if not pedaco:
+            chunk = conexao.recv(min(TAM_BUFFER, bytes_restantes))
+            if not chunk:
                 raise ConnectionError("Conexao encerrada antes de completar o recebimento")
-            arquivo.write(pedaco)
-            bytes_restantes -= len(pedaco)
+            arquivo.write(chunk)
+            bytes_restantes -= len(chunk)
             total_recvs += 1
 
     return total_recvs
 
+# Le os argumentos, conecta no servidor, envia a requisicao e trata a resposta
 def main():
     if len(sys.argv) != 4:
         print(f"Uso: python3 cliente.py <endereco-ip> <porta> <nome-arquivo>")
@@ -83,7 +85,7 @@ def main():
             if not os.path.isdir(DOWNLOADS):
                 os.makedirs(DOWNLOADS)
             destino = os.path.join(DOWNLOADS, nome_arq)
-            recvs_corpo = receber_em_pedacos(socket_cliente, tam, destino)
+            recvs_corpo = receber_em_chunks(socket_cliente, tam, destino)
             total_recvs = recvs_cab + recvs_corpo
             
             print(f"[cliente] Arquivo salvo em '{destino}' ({tam} bytes)")

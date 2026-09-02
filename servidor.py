@@ -2,37 +2,40 @@ import socket
 import sys
 import os
 
-TAM_BUFFER = 4096
+TAM_BUFFER = 4096 # tamanho maximo de cada chunk (bytes)
 ARQUIVOS = "arquivos"
 
+# Envia todos os bytes do buffer
 def enviar_tudo(conexao, dados):
     conexao.sendall(dados)
 
-def enviar_em_pedacos(conexao, caminho_arq):
-    """evita ter que carregar tudo na mem"""
+# Le o arquivo em chunks e envia, evitando carregar tudo na memoria
+def enviar_em_chunks(conexao, caminho_arq): 
     with open(caminho_arq, "rb") as arquivo:
         while True:
-            pedaco = arquivo.read(TAM_BUFFER)
-            if not pedaco:
+            chunk = arquivo.read(TAM_BUFFER)
+            if not chunk:
                 break
-            enviar_tudo(conexao, pedaco)
+            enviar_tudo(conexao, chunk)
 
+# Envia o cabecalho de sucesso seguido do conteudo do arquivo
 def enviar_ok(conexao, caminho_arq):
     tam = os.path.getsize(caminho_arq)
     cabecalho = f"OK {tam}\n".encode("utf-8")
     enviar_tudo(conexao, cabecalho)
-    enviar_em_pedacos(conexao, caminho_arq)
+    enviar_em_chunks(conexao, caminho_arq)
 
+# Envia o cabecalho de erro seguido da mensagem explicando o problema
 def enviar_erro(conexao, mensagem):
     corpo = mensagem.encode("utf-8")
     cabecalho = f"ERRO {len(corpo)}\n".encode("utf-8")
     enviar_tudo(conexao, cabecalho)
     enviar_tudo(conexao, corpo)
 
+# Le byte a byte ate encontrar '\n', formando a linha de requisicao
 def receber_linha(conexao):
-    """vai ler byte a byte para formar a linha de requisicao"""
     linha = b""
-    while True: 
+    while True:
         byte = conexao.recv(1)
         if not byte:
             break
@@ -41,6 +44,7 @@ def receber_linha(conexao):
         linha += byte
     return linha.decode("utf-8")
 
+# Interpreta a requisicao do cliente e responde com o arquivo ou um erro
 def tratar_cliente(conexao, end_cliente):
     print(f"[servidor] Conexao recebida de {end_cliente}")
     try:
@@ -55,7 +59,7 @@ def tratar_cliente(conexao, end_cliente):
         nome_arq = partes[1]
         caminho_arq = os.path.join(ARQUIVOS, nome_arq)
 
-        """o cliente nao pode pedir por arquivos fora da pasta de arquivos"""
+        # o cliente nao pode pedir por arquivos fora da pasta de arquivos
         caminho_abs_pasta = os.path.abspath(ARQUIVOS)
         caminho_abs_pedido = os.path.abspath(caminho_arq)
         if not caminho_abs_pedido.startswith(caminho_abs_pasta):
@@ -70,6 +74,7 @@ def tratar_cliente(conexao, end_cliente):
     finally:
         conexao.close()
 
+# Le os argumentos, sobe o socket do servidor e atende clientes em loop
 def main():
     if len(sys.argv) != 3:
         print(f"Uso: python3 servidor.py <endereco-ip> <porta>")
