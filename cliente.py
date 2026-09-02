@@ -7,29 +7,35 @@ DOWNLOADS = "downloads"
 
 def receber_linha(conexao):
     linha = b""
+    total_recvs = 0
     while True:
         byte = conexao.recv(1)
+        total_recvs += 1
         if not byte:
             break
         if byte == b"\n":
             break
         linha += byte
-    return linha.decode("utf-8")
+    return linha.decode("utf-8"), total_recvs
 
 def receber_tudo(conexao, tam):
     """recv em loop ate chegar no tamanho de bytes. Usada so para as mensagens de erro (pequenas)"""
     dados_recebidos = b""
+    total_recvs = 0
     while len(dados_recebidos) < tam:
         restante = tam - len(dados_recebidos)
         pedaco = conexao.recv(min(TAM_BUFFER, restante))
+        total_recvs += 1
         if not pedaco:
             raise ConnectionError("Conexao encerrada antes de completar o recebimento")
         dados_recebidos += pedaco
-    return dados_recebidos
+    return dados_recebidos, total_recvs
 
 def receber_em_pedacos(conexao, tam, destino):
     """recebe o arquivo em pedasos e escrewve direto no disco"""
     bytes_restantes = tam
+    total_recvs = 0
+
     with open(destino, "wb") as arquivo:
         while bytes_restantes > 0:
             pedaco = conexao.recv(min(TAM_BUFFER, bytes_restantes))
@@ -37,10 +43,13 @@ def receber_em_pedacos(conexao, tam, destino):
                 raise ConnectionError("Conexao encerrada antes de completar o recebimento")
             arquivo.write(pedaco)
             bytes_restantes -= len(pedaco)
+            total_recvs += 1
+
+    return total_recvs
 
 def main():
     if len(sys.argv) != 4:
-        print(f"Uso: python cliente.py <endereco-ip> <porta> <nome-arquivo>")
+        print(f"Uso: python3 cliente.py <endereco-ip> <porta> <nome-arquivo>")
         sys.exit(1)
 
     ip = sys.argv[1]
@@ -60,8 +69,8 @@ def main():
         requisicao = f"GET {nome_arq}\n"
         socket_cliente.sendall(requisicao.encode("utf-8"))
 
-        cabecalho = receber_linha(socket_cliente)
-        print(f"[cilente] Cabecalho recebido: {cabecalho!r}")
+        cabecalho, recvs_cab = receber_linha(socket_cliente)
+        print(f"[cliente] Cabecalho recebido: {cabecalho!r}")
 
         partes = cabecalho.strip().split(" ", 1)
         if len(partes) != 2:
@@ -74,8 +83,11 @@ def main():
             if not os.path.isdir(DOWNLOADS):
                 os.makedirs(DOWNLOADS)
             destino = os.path.join(DOWNLOADS, nome_arq)
-            receber_em_pedacos(socket_cliente, tam, destino)
+            recvs_corpo = receber_em_pedacos(socket_cliente, tam, destino)
+            total_recvs = recvs_cab + recvs_corpo
+            
             print(f"[cliente] Arquivo salvo em '{destino}' ({tam} bytes)")
+            print(f"Total de chamadas de rpimitivas de recepção: {total_recvs}")
 
         elif status == "ERRO":
             mensagem = receber_tudo(socket_cliente, tam)
@@ -83,7 +95,7 @@ def main():
 
         else:
             print(f"[cliente] Status desconhecido: {status}")
-            
+
     except Exception as e:
             print(f"Erro durante a comunicacao: {e}")
     finally:

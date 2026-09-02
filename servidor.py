@@ -62,17 +62,17 @@ def tratar_cliente(conexao, end_cliente):
             enviar_erro(conexao, "Acesso negado")
             return
         if not os.path.isfile(caminho_arq):
-            enviar_erro(conexao, f"Arquivo '{nome_arq} nao encontrado")
+            enviar_erro(conexao, f"Arquivo '{nome_arq}' nao encontrado")
             return
 
         enviar_ok(conexao, caminho_arq)
-        print(f"[servidor] Arquivo '{nome_arq}' enviado com sucaesso")
+        print(f"[servidor] Arquivo '{nome_arq}' enviado com sucesso")
     finally:
         conexao.close()
 
 def main():
     if len(sys.argv) != 3:
-        print(f"Uso: python servidor.py <endereco-ip> <porta>")
+        print(f"Uso: python3 servidor.py <endereco-ip> <porta>")
         sys.exit(1)
 
     ip = sys.argv[1]
