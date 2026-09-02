@@ -87,11 +87,14 @@ def main():
             total_recvs = recvs_cab + recvs_corpo
             
             print(f"[cliente] Arquivo salvo em '{destino}' ({tam} bytes)")
-            print(f"Total de chamadas de rpimitivas de recepção: {total_recvs}")
+            print(f"Total de chamadas de pimitivas de recepção: {total_recvs}")
 
         elif status == "ERRO":
-            mensagem = receber_tudo(socket_cliente, tam)
+            mensagem, recvs_corpo = receber_tudo(socket_cliente, tam)
+            total_recvs = recvs_cab + recvs_corpo
+            
             print(f"[cliente] Erro do servidor: {mensagem.decode('utf-8')}")
+            print(f"Total de chamadas de pimitivas de recepção: {total_recvs}")
 
         else:
             print(f"[cliente] Status desconhecido: {status}")
